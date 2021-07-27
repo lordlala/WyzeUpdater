@@ -23,7 +23,7 @@ def log_init(debugging):
         import http.client as http_client
     except ImportError:
         # Python 2
-        import httplib as http_client
+        import http.client as http_client
 
     # You must initialize logging, otherwise you'll not see debug output.
     logging.basicConfig()
@@ -133,13 +133,22 @@ def device_api(creds, url, sv, **params):
 
     logging.debug(params)
     payload.update(params)
-
+    print(BASE_URL + url)
     rsp = requests.post(BASE_URL + url, headers={'User-Agent': 'okhttp/3.8.1'}, json=payload).json()
     logging.debug(rsp)
     if rsp['code'] != '1':
         raise RuntimeError('Request failed, error %s:%s' % (rsp['code'], rsp['msg']))
 
     return rsp['data']
+
+def get_device_properties(creds):
+    URL_V2_GET_DEVICE_PROPERTIES = "/app/v2/device/get_property_list"
+    SV_V2_GET_DEVICE_PROPERTIES = "9d74946e652647e9b6c9d59326aef104"
+    try:
+        req = device_api(creds, URL_V2_GET_DEVICE_PROPERTIES, SV_V2_GET_DEVICE_PROPERTIES)
+    except (ValueError):
+        req = "None"
+    return req
 
 def get_device_list(creds):
     URL_V2_GET_DEVICE_LIST = "/app/v2/device/get_device_list"
@@ -164,16 +173,19 @@ def push_update(creds, model, mac, update_url, md5):
 
 def list_devices(creds, args):
     data = get_device_list(creds)
+    props = get_device_properties(creds)
+    print(props)
     devices = sorted(data['device_list'], key=lambda x:x['product_model'], reverse=True)
     for x in devices:
         if args.models and (x['product_model'] not in args.models):
+            print(x)
             continue
 
         print("Device Type:       %s (%s)" % (x['product_type'], x['product_model']))
         print("Device MAC:        %s" % x['mac'])
         print("Firmware Version:  %s" % x['firmware_ver'])
         print("Device Name:       %s" % x['nickname'])
-        print()
+        #print(x)
 
 def start_http_server(firmware_data, addr, port, use_ssl, extra_dir=None):
     class Handler(http.server.SimpleHTTPRequestHandler):
